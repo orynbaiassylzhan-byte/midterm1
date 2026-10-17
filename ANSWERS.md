@@ -7,9 +7,10 @@ For my first draft I used AI assistants and Python scripts to calculate the retr
 
 Part 1: Retrieval and cost decision
 1a. Metrics (all 60 questions)
-config | recall@1 | recall@3 | recall@5 | MRR@10
-A | 0.550 | 0.667 | 0.783 | 0.629
-B | 0.433 | 0.683 | 0.767 | 0.551
+| config | recall@1 | recall@3 | recall@5 | MRR@10 |
+| ------ | -------- | -------- | -------- | ------ |
+| A      | 0.550    | 0.667    | 0.783    | 0.629  |
+| B      | 0.433    | 0.683    | 0.767    | 0.551  |
 
 1b. Recall and 95 % Wilson interval of each candidate
 
@@ -32,10 +33,10 @@ B | 0.433 | 0.683 | 0.767 | 0.551
 1d. Decision (at most 150 words)
 Chosen candidate: B, k=5
 
-Decision: A, k=3 and A, k=5 cost 9199 and 12170 per year, both above the 8000 budget, so A is excluded despite its recall. Within budget remain B, k=3 (5937; recall 0.683, 95% CI 0.558-0.787) and B, k=5 (6732; recall 0.767, CI 0.646-0.856). B, k=5 has the higher recall and still fits the budget, so I choose it. The intervals overlap, so the gain over k=3 is suggestive, not proven. Recall of B, k=5 by language: EN = 0.90, RU = 0.70, KK = 0.70. With only 20 questions per language these values are noisy, so the differences between languages should not be over-interpreted.
+Decision: Both A candidates are over budget: A, k=3 costs 9199 and A, k=5 costs 12170 per year, against 8000. Only B fits. B, k=5 costs 6732 (1268 under budget) and finds the correct chunk for 0.767 of questions (95% CI 0.646-0.856), against 0.683 (0.558-0.787) for B, k=3 at 5937. The extra 795 per year buys 5 more correct retrievals out of 60. The intervals overlap, so this gain is suggestive, not proven, but the cost fits the budget, so I take the higher recall. By language, recall of B, k=5: EN = 0.90, RU = 0.70, KK = 0.70. With 20 questions per language these differences are noisy; Russian and Kazakh may still be weaker.
 
 1e. Next measurement (at most 60 words)
-Label more test questions, for example 100 per language, and recompute recall of B, k=5 per language. With 20 questions per language the intervals are too wide to tell whether Russian and Kazakh really retrieve worse than English.
+Measure recall@5 of config B on at least 100 labelled questions per language (300 in total), then recompute the Wilson intervals. With 20 questions per language the intervals are very wide, too wide to tell whether Russian and Kazakh retrieve worse than English, or whether k=5 really beats k=3.
 
 Part 2: A document pipeline you can defend
 2a. Numbers
@@ -48,33 +49,34 @@ Part 2: A document pipeline you can defend
 Personal-data pages per year sent abroad under H: 233600
 
 2b. Memo (at most 300 words)
-Recommendation: Pipeline L (own server in Kazakhstan).
+To: Head of Operations
+Recommendation: use Pipeline L (own server in Kazakhstan).
 
-Accuracy: H reaches 0.878 overall (158/180), L 0.867 (156/180); a one-point gap is within noise at n=180. In the weakest cell, Kazakh degraded scans, L reaches 0.767 (95% CI 0.591-0.882) against 0.667 (0.488-0.808) for H.
+Accuracy. H is correct on 158 of 180 test invoices (0.878), L on 156 (0.867). This one-point gap is well within noise at n=180. The weakest cell for both is Kazakh degraded scans: H 0.667 (95% CI 0.488-0.808), L 0.767 (0.591-0.882). The intervals overlap, so L's edge there is not proven, but H is certainly not better.
 
-Cost: L needs one server (4000 pages per day is below its 6000 limit): 9000 USD per year. H costs 20732 USD per year (5040 input and 412 output tokens per page, 1.46 million pages).
+Cost. L needs one server, since 4000 pages per day is below its 6000 limit: 9000 USD per year. H costs 20732 USD per year (5040 input and 412 output tokens per page, 1.46 million pages), more than double.
 
-Data: 16% of the 4000 daily pages carry a name and ИИН. Under H that is 233600 pages per year sent to a data centre abroad. Law No. 94-V requires a legal basis and adequate protection for such transfers, which we cannot verify for the vendor. L removes the issue.
+Data. 16% of the pages carry a name and ИИН. Under H that is 233600 pages per year sent to a data centre abroad. Law No. 94-V on personal data requires a legal basis and adequate protection for cross-border transfers; a vendor's statement does not show this. L keeps these pages in Kazakhstan.
 
-Risk: Kazakh degraded scans remain the weakest cell in both pipelines (0.77 at best), so I suggest human review for them.
+Risks and next steps. Kazakh degraded scans remain the weakest cell (0.77 at best), so route them to human review. One L server has room for 6000 pages per day, so 50% volume growth still fits, but a second server would be needed as a backup. Legal counsel should confirm the transfer rules before any move to H.
 
 Part 3: Explain your own numbers
 Q1
 Number: 2.13
-Why: Output tokens cost 6x input. Kazakh needs 2.37x more input but only 1.74x more output tokens, so the bill grows 2.13x, less than the 2.31x token count.
+Why: The bill weights output tokens 6x more than input tokens. Kazakh output grows only 1.74x versus 2.37x for input, pulling the bill ratio to 2.13, below the 2.31 token ratio.
 
 Q2
 Number: 592
-Why: No: the sentence starts at token 592, beyond e5's 512 limit, so it is truncated and never embedded. There is no error; the text is silently cut and retrieval just fails.
+Why: No. 640 cl100k tokens is about 657 e5 tokens; the sentence starts at 592, past the 512 limit, so it is truncated and never embedded. The chunk cannot be retrieved by it. No error appears: truncation is silent.
 
 Q3
 Number: 80.2
-Why: Top-p keeps the smallest set of tokens with cumulative probability at least 0.8 (Monday, Friday) and renormalises, dropping the tail. Lower temperature instead sharpens the whole distribution and keeps every token possible.
+Why: Softmax at T=1 gives Monday 0.741, Friday 0.183. Top-p 0.8 keeps both (cumulative 0.924), renormalised Monday is 80.2%. Top-p cuts the unlikely tail but keeps the ratios; lower temperature reshapes all probabilities.
 
 Q4
 Number: 21.7
-Why: Left out multiplication and arithmetic sequences: they follow rules, not memorised one-off facts. The weighted singleton rate of account numbers and birthdays gives 21.7%. A "never invent" instruction adds no knowledge, so the bound stays.
+Why: Excluded multiplication and arithmetic sequences: rule-based tasks, not memorised facts. For account numbers and birthdays the singleton rate bounds errors: (146x0.28 + 336x0.19) / 482 = 21.7%. A "never invent" prompt adds no knowledge, so the bound stays.
 
 Q5
 Number: 2.75
-Why: 55 tokens per parameter against Chinchilla's 20: the model is over-trained relative to the compute-optimal ratio. Chinchilla found models like GPT-3 under-trained: too large for their data.
+Why: 34B params on 1.87T tokens is 55 tokens per parameter; Chinchilla used 20, so the ratio is 2.75. By that criterion the model is over-trained. Chinchilla said models like GPT-3 were under-trained: too large for their data.
